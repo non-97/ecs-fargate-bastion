@@ -15,7 +15,11 @@ export interface EcsFargateParams {
   repositoryName: string;
   imagesTag: string;
   desiredCount: number;
-  securityGroupId?: string;
+  ecsServiceSecurityGroupIds?: string[];
+  inboundFromEcsServiceAllowedSecurityGroupId?: {
+    securityGroupId: string;
+    ports: cdk.aws_ec2.Port[];
+  }[];
 }
 
 export interface EcsFargateBastionStackParams {
@@ -33,7 +37,7 @@ export const ecsFargateBastionStackParams: EcsFargateBastionStackParams = {
     region: process.env.CDK_DEFAULT_REGION,
   },
   property: {
-    vpcId: "vpc-0c923cc42e5fb2cbf",
+    vpcId: "vpc-06f36019e6dc40f86",
     vpcEndpointParams: {
       vpcEndpointSubnetSelection: {
         subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED,
@@ -50,11 +54,20 @@ export const ecsFargateBastionStackParams: EcsFargateBastionStackParams = {
         availabilityZones: ["us-east-1a"],
       },
       clusterName: "ecs-fargate-bastion",
-      ecrRepositoryPrefix: "ecr-public-pull-through3",
-      repositoryName: "ecr-public-pull-through3/docker/library/busybox",
+      ecrRepositoryPrefix: "ecr-public-pull-through",
+      repositoryName: "ecr-public-pull-through/docker/library/busybox",
       imagesTag: "stable-musl",
       desiredCount: 1,
-      securityGroupId: "sg-05744485862b195ae",
+      ecsServiceSecurityGroupIds: [
+        "sg-0e5bce3c653793012",
+        "sg-0a15755f2fb642698",
+      ],
+      inboundFromEcsServiceAllowedSecurityGroupId: [
+        {
+          securityGroupId: "sg-0a15755f2fb642698",
+          ports: [cdk.aws_ec2.Port.allTcp(), cdk.aws_ec2.Port.allIcmp()],
+        },
+      ],
     },
   },
 };

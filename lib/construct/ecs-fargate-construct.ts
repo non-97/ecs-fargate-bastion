@@ -100,19 +100,21 @@ export class EcsFargateConstruct extends Construct {
       );
     }
 
-    // Security Group
-    const securityGroups = props.ecsFargateParams.securityGroupId
-      ? [
-          cdk.aws_ec2.SecurityGroup.fromSecurityGroupId(
-            this,
-            "SecurityGroup",
-            props.ecsFargateParams.securityGroupId
-          ),
-        ]
+    // Attache Security Group
+    const securityGroups = props.ecsFargateParams.ecsServiceSecurityGroupIds
+      ? props.ecsFargateParams.ecsServiceSecurityGroupIds.map(
+          (securityGroupId) => {
+            return cdk.aws_ec2.SecurityGroup.fromSecurityGroupId(
+              this,
+              `EcsServiceSecurityGroupId_${securityGroupId}`,
+              securityGroupId
+            );
+          }
+        )
       : undefined;
 
     // ECS Service
-    new cdk.aws_ecs.FargateService(this, "Service", {
+    const ecsService = new cdk.aws_ecs.FargateService(this, "Service", {
       cluster,
       enableExecuteCommand: true,
       taskDefinition,
@@ -126,5 +128,28 @@ export class EcsFargateConstruct extends Construct {
       securityGroups,
       vpcSubnets: props.ecsFargateParams.ecsFargateSubnetSelection,
     });
+
+    // Allow dst Security Group from ECS Service Security Group
+    props.ecsFargateParams.inboundFromEcsServiceAllowedSecurityGroupId?.forEach(
+      (allowRule) => {
+        const securityGroup = cdk.aws_ec2.SecurityGroup.fromSecurityGroupId(
+          this,
+          `InboundFromEcsServiceAllowedSecurityGroupId_${allowRule.securityGroupId}`,
+          allowRule.securityGroupId
+        );
+
+        allowRule.ports.forEach((port) => {
+          ecsService.connections.securityGroups.forEach(
+            (ecsServiceSecurityGroup) => {
+              securityGroup.addIngressRule(
+                ecsServiceSecurityGroup,
+                port,
+                `Inbound ${props.ecsFargateParams.clusterName} service`
+              );
+            }
+          );
+        });
+      }
+    );
   }
 }
